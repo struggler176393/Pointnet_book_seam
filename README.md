@@ -9,3 +9,5 @@ python train_partseg.py --model pointnet2_part_seg_msg --normal --log_dir pointn
 
 ## 测试（用open3d做的可视化）
 python visualize_partseg_open3d.py 
+
+![在这里插入图片描述](https://github.com/struggler176393/Pointnet_book_seam/seam.png)
