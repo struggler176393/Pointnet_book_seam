@@ -103,6 +103,8 @@ def rotate_point_cloud_with_normal(batch_xyz_normal):
         batch_xyz_normal[k,:,3:6] = np.dot(shape_normal.reshape((-1, 3)), rotation_matrix)
     return batch_xyz_normal
 
+
+# 用这个好点
 def rotate_perturbation_point_cloud_with_normal(batch_data, angle_sigma=0.06, angle_clip=0.18):
     """ Randomly perturb the point clouds by small rotations
         Input:

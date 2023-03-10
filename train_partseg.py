@@ -17,11 +17,11 @@ from pathlib import Path
 from tqdm import tqdm
 from data_utils.ShapeNetDataLoader import PartNormalDataset
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # os.path.abspath(__file__)就是文件的绝对地址，BASE_DIR就是文件所在目录的绝对地址
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 
-seg_classes = {'book': [0,1]}
+seg_classes = {'board': [0,1]}
 seg_label_to_cat = {}  # {0:Airplane, 1:Airplane, ...49:Table}
 for cat in seg_classes.keys():
     for label in seg_classes[cat]:
@@ -29,9 +29,9 @@ for cat in seg_classes.keys():
 
 
 def inplace_relu(m):
-    classname = m.__class__.__name__
-    if classname.find('ReLU') != -1:
-        m.inplace=True
+    classname = m.__class__.__name__    # 获取类的名称
+    if classname.find('ReLU') != -1:    # 若类的名称为ReLU，则inplace=True。 find()：包含字符串输出0，不包含输出-1
+        m.inplace=True                  # inplace = True是指原地进行操作，操作完成后覆盖原来的变量，节省内存。
 
 def to_categorical(y, num_classes):
     """ 1-hot encodes a tensor """
@@ -43,17 +43,17 @@ def to_categorical(y, num_classes):
 
 def parse_args():
     parser = argparse.ArgumentParser('Model')
-    parser.add_argument('--model', type=str, default='pointnet_part_seg', help='model name')
-    parser.add_argument('--batch_size', type=int, default=2, help='batch Size during training')
+    parser.add_argument('--model', type=str, default='pointnet2_part_seg_msg', help='model name')
+    parser.add_argument('--batch_size', type=int, default=1, help='batch Size during training')
     parser.add_argument('--epoch', default=100, type=int, help='epoch to run')
     parser.add_argument('--learning_rate', default=0.001, type=float, help='initial learning rate')
     parser.add_argument('--gpu', type=str, default='0', help='specify GPU devices')
     parser.add_argument('--optimizer', type=str, default='Adam', help='Adam or SGD')
-    parser.add_argument('--log_dir', type=str, default=None, help='log path')
+    parser.add_argument('--log_dir', type=str, default='pointnet2_part_seg_msg', help='log path')
     parser.add_argument('--decay_rate', type=float, default=1e-4, help='weight decay')
     # parser.add_argument('--npoint', type=int, default=2048, help='point Number')
     parser.add_argument('--npoint', type=int, default=4096, help='point Number')
-    parser.add_argument('--normal', action='store_true', default=False, help='use normals')
+    parser.add_argument('--normal', action='store_false', default=True, help='use normals')
     parser.add_argument('--step_size', type=int, default=20, help='decay step for lr decay')
     parser.add_argument('--lr_decay', type=float, default=0.5, help='decay rate for lr decay')
 
@@ -96,7 +96,7 @@ def main(args):
     log_string('PARAMETER ...')
     log_string(args)
 
-    root = 'data/book_seam_dataset/'
+    root = 'data/coating_seam_dataset/'
 
     TRAIN_DATASET = PartNormalDataset(root=root, npoints=args.npoint, split='trainval', normal_channel=args.normal)
     trainDataLoader = torch.utils.data.DataLoader(TRAIN_DATASET, batch_size=args.batch_size, shuffle=True, num_workers=10, drop_last=True)
@@ -105,12 +105,12 @@ def main(args):
     log_string("The number of training data is: %d" % len(TRAIN_DATASET))
     log_string("The number of test data is: %d" % len(TEST_DATASET))
 
-    num_classes = 1
-    num_part = 2
+    num_classes = 1    # book
+    num_part = 2       # background,seam
 
     '''MODEL LOADING'''
-    MODEL = importlib.import_module(args.model)
-    shutil.copy('models/%s.py' % args.model, str(exp_dir))
+    MODEL = importlib.import_module(args.model) # 导入模型文件的类
+    shutil.copy('models/%s.py' % args.model, str(exp_dir)) # shutil.copy复制文件，exp_dir = Path('./log/')
     shutil.copy('models/pointnet2_utils.py', str(exp_dir))
 
     classifier = MODEL.get_model(num_part, normal_channel=args.normal).cuda()
@@ -120,8 +120,8 @@ def main(args):
     def weights_init(m):
         classname = m.__class__.__name__
         if classname.find('Conv2d') != -1:
-            torch.nn.init.xavier_normal_(m.weight.data)
-            torch.nn.init.constant_(m.bias.data, 0.0)
+            torch.nn.init.xavier_normal_(m.weight.data)   # 权重值正态分布
+            torch.nn.init.constant_(m.bias.data, 0.0)     # 偏置为0
         elif classname.find('Linear') != -1:
             torch.nn.init.xavier_normal_(m.weight.data)
             torch.nn.init.constant_(m.bias.data, 0.0)
@@ -148,7 +148,7 @@ def main(args):
         optimizer = torch.optim.SGD(classifier.parameters(), lr=args.learning_rate, momentum=0.9)
 
     def bn_momentum_adjust(m, momentum):
-        if isinstance(m, torch.nn.BatchNorm2d) or isinstance(m, torch.nn.BatchNorm1d):
+        if isinstance(m, torch.nn.BatchNorm2d) or isinstance(m, torch.nn.BatchNorm1d):    # 判断m的类型
             m.momentum = momentum
 
     LEARNING_RATE_CLIP = 1e-5
@@ -166,7 +166,7 @@ def main(args):
 
         log_string('Epoch %d (%d/%s):' % (global_epoch + 1, epoch + 1, args.epoch))
         '''Adjust learning rate and BN momentum'''
-        lr = max(args.learning_rate * (args.lr_decay ** (epoch // args.step_size)), LEARNING_RATE_CLIP)
+        lr = max(args.learning_rate * (args.lr_decay ** (epoch // args.step_size)), LEARNING_RATE_CLIP)    # 学习率动态调整
         log_string('Learning rate:%f' % lr)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
@@ -181,9 +181,13 @@ def main(args):
         for i, (points, label, target) in tqdm(enumerate(trainDataLoader), total=len(trainDataLoader), smoothing=0.9):
             optimizer.zero_grad()
 
+            
             points = points.data.numpy()
-            points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])
-            points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])
+            points[:, :, 0:7] = provider.random_point_dropout(points[:, :, 0:7])        # 随机删点
+            points[:, :, 0:3] = provider.random_scale_point_cloud(points[:, :, 0:3])    # 随机缩放
+            points[:, :, 0:3] = provider.shift_point_cloud(points[:, :, 0:3])           # 随机平移
+            points[:, :, 0:6] = provider.rotate_perturbation_point_cloud_with_normal(points[:, :, 0:6])    # 随机旋转
+            
             points = torch.Tensor(points)
             points, label, target = points.float().cuda(), label.long().cuda(), target.long().cuda()
             points = points.transpose(2, 1)
