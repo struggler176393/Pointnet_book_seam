@@ -18,8 +18,8 @@ if __name__ =='__main__':
     # process_ply()
 
     video_utils.setting()
-    labeled_board_address = r'data/dataset_generator/label_urdf/urdf/label_urdf.urdf'
-    origin_board_address = r'data/dataset_generator/plane_urdf/urdf/plane_urdf.urdf'
+    labeled_board_address = r'data/coating_seam_dataset/dataset_generator/label_urdf/urdf/label_urdf.urdf'
+    origin_board_address = r'data/coating_seam_dataset/dataset_generator/plane_urdf/urdf/plane_urdf.urdf'
     body_uid_now = []
     num_classes = 2
 
